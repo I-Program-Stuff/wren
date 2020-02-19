@@ -82,8 +82,10 @@ static bool handleRequestError(uv_fs_t* request)
   
   int error = (int)request->result;
   free(data);
+  data = NULL;
   uv_fs_req_cleanup(request);
   free(request);
+  request = NULL;
   
   schedulerResumeError(fiber, uv_strerror(error));
   return true;
@@ -110,8 +112,10 @@ WrenHandle* freeRequest(uv_fs_t* request)
   WrenHandle* fiber = data->fiber;
   
   free(data);
+  data = NULL;
   uv_fs_req_cleanup(request);
   free(request);
+  request = NULL;
   
   return fiber;
 }
@@ -288,6 +292,7 @@ static void fileReadBytesCallback(uv_fs_t* request)
 
   // TODO: Likewise, freeing this after we resume is lame.
   free(buffer.base);
+  buffer.base = NULL;
 }
 
 void fileReadBytes(WrenVM* vm)
@@ -373,6 +378,7 @@ static void fileWriteBytesCallback(uv_fs_t* request)
  
   FileRequestData* data = (FileRequestData*)request->data;
   free(data->buffer.base);
+  data->buffer.base = NULL;
 
   schedulerResume(freeRequest(request), false);
 }
@@ -392,7 +398,7 @@ void fileWriteBytes(WrenVM* vm)
   // hold on to it in the request until the write is done.
   // TODO: Handle allocation failure.
   data->buffer.base = (char*)malloc(length);
-  memcpy(data->buffer.base, bytes, length);
+  memmove(data->buffer.base, bytes, length);
 
   uv_fs_write(getLoop(), request, fd, &data->buffer, 1, offset,
               fileWriteBytesCallback);
@@ -585,6 +591,7 @@ static void stdinReadCallback(uv_stream_t* stream, ssize_t numRead,
 
   // TODO: Likewise, freeing this after we resume is lame.
   free(buffer->base);
+  buffer->base = NULL;
 }
 
 void stdinReadStart(WrenVM* vm)
